@@ -1,0 +1,20 @@
+# Never ship credentials, decks or generated reports in the image
+.env
+.env.*
+!.env.example
+*.pdf
+*.pptx
+*.ppt
+uploads/
+output/
+samples/
+
+# Not needed at runtime
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+tests/
+scripts/

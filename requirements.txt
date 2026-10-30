@@ -1,0 +1,13 @@
+# Exact pins: the versions the test suite passed on (Python 3.12 and 3.14).
+# Unpinned installs pull newer major versions (anthropic 2.x, pymupdf 2.x) that are untested here.
+anthropic==0.125.0
+streamlit==1.61.1
+pydantic==2.13.4
+python-dotenv==1.2.2
+pymupdf==1.28.2
+python-pptx==1.0.2
+reportlab==5.0.0
+pypdf==6.14.2
+pandas==3.0.5
+pillow==12.3.0
+httpx==0.28.1

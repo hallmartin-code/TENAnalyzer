@@ -1,0 +1,23 @@
+# Credentials
+.env
+.env.*
+!.env.example
+
+# Uploaded decks and generated reports must never be committed
+uploads/
+output/
+samples/
+*.pdf
+*.pptx
+*.ppt
+*.json
+!railway.json
+!assets/**
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.streamlit/secrets.toml
