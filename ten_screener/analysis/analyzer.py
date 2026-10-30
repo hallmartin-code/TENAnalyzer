@@ -10,11 +10,12 @@ from datetime import date
 from pathlib import Path
 
 from ten_screener import REPORT_TITLE, __version__
-from ten_screener.analysis import prompts, research
+from ten_screener.analysis import estimate, prompts, research
 from ten_screener.analysis.llm import ClaudeClient
 from ten_screener.config import Settings
 from ten_screener.evidence import drop_unknown_ids, verify_ledger
 from ten_screener.rules import (
+    apply_estimate,
     calculate_runway,
     evaluate_stage_gate,
     exclusion_confirmed,
@@ -27,6 +28,7 @@ from ten_screener.schemas import (
     AssessmentOutput,
     EvidenceStatus,
     ExtractionResult,
+    GateStatus,
     LedgerOutput,
     ReportMeta,
     ScreeningReport,
@@ -82,9 +84,22 @@ def analyse(
     sens = sensitivity(ledger)
 
     external, research_notes = [], []
+    if gate.status == GateStatus.CANNOT_DETERMINE and settings.stage_estimate_enabled:
+        say("Stage gate not settled by the deck: estimating stage and FDA pathway from public sources")
+        stage_estimate, stage_findings, notes = estimate.run_estimate(client, ledger, gate, deck_blocks, analysis_date)
+        gate = apply_estimate(gate, stage_estimate)
+        external += stage_findings
+        research_notes += notes
+        if gate.estimated:
+            research_notes.append(
+                "The stage gate was estimated from the deck and public web sources because the deck did not settle it; "
+                "the company's name, website and product description were used for searches."
+            )
     if external_research:
         say("Running optional external research")
-        external, research_notes = research.run_research(client, ledger, analysis_date)
+        found, notes = research.run_research(client, ledger, analysis_date)
+        external += found
+        research_notes += notes
 
     derived = {
         "stage_gate": gate.model_dump(mode="json"),

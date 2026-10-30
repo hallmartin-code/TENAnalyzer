@@ -7,7 +7,8 @@ never as zero.
 Stage-gate principle: a gate *fails* only on affirmative evidence of failure
 (the deck says it is pre-revenue, only pilots are evidenced, the pathway is
 stated to be undetermined, zero paying customers is disclosed). Silence is
-"Cannot Determine", which still blocks a Strong/Moderate recommendation.
+"Cannot Determine"; the pipeline then replaces it with a labeled stage and pathway
+estimate (``apply_estimate``), which counts exactly like a decided gate.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from ten_screener.schemas import (
     ReadinessResult,
     RunwayResult,
     SensitivityFlags,
+    StageEstimate,
 )
 
 TRACK_LABELS = {
@@ -62,6 +64,29 @@ def evaluate_stage_gate(ledger: LedgerOutput) -> GateResult:
         reasons = [f"Track could not be determined: {ledger.track.rationale}"]
         ids = list(ledger.track.evidence_ids)
     return GateResult(track=track, track_label=TRACK_LABELS[track], status=status, reasons=reasons, evidence_ids=ids)
+
+
+def apply_estimate(gate: GateResult, estimate: StageEstimate | None) -> GateResult:
+    """Replace a Cannot Determine gate with the labeled estimate; any other gate is kept as decided."""
+    if gate.status != GateStatus.CANNOT_DETERMINE or estimate is None:
+        return gate
+    reasons = [f"Estimated stage: {estimate.estimated_stage} ({estimate.confidence} confidence)."]
+    if estimate.track == "B" and estimate.regulatory_pathway:
+        where = f", {estimate.jurisdiction}" if estimate.jurisdiction else ""
+        status = f"; {estimate.authorization_status}" if estimate.authorization_status else ""
+        reasons.append(f"Estimated FDA pathway: {estimate.regulatory_pathway}{where}{status}.")
+    reasons.append(estimate.rationale.strip())
+    if estimate.verification_needed:
+        reasons.append(f"To verify: {estimate.verification_needed.rstrip('.')}.")
+    return GateResult(
+        track=estimate.track,
+        track_label=TRACK_LABELS[estimate.track],
+        status=GateStatus(estimate.gate_status),
+        reasons=reasons,
+        evidence_ids=list(dict.fromkeys(gate.evidence_ids + estimate.evidence_ids)),
+        estimated=True,
+        estimate=estimate,
+    )
 
 
 def _gate_track_a(ledger: LedgerOutput) -> tuple[GateStatus, list[str], list[str]]:

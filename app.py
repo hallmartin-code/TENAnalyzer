@@ -5,6 +5,7 @@ Run with:  streamlit run app.py
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import logging
@@ -78,6 +79,10 @@ with st.sidebar:
                               "searches; deck figures and investor information are not sent. Findings are kept separate from deck claims.")
     if external:
         st.warning("External research is ON: public web results will be cited separately from deck evidence.")
+    estimate_stage = st.toggle("Estimate stage & FDA pathway when the deck is silent", value=settings.stage_estimate_enabled,
+                               help="When the deck alone cannot settle the stage gate, the company's name, website and product "
+                                    "description are used to search FDA databases and public sources, and Claude commits to a "
+                                    "labeled, confidence-rated estimate instead of reporting 'Cannot Determine'.")
     offer_public = st.toggle("Also generate a public one-page version", value=False,
                              help="A separate PDF with investor names, committed capital, cash/burn and valuation removed.")
     logo_file = st.file_uploader("Optional logo for the one-page PDF header", type=["png", "jpg", "jpeg"])
@@ -127,7 +132,7 @@ def extraction_chips(extraction: ExtractionResult) -> list[tuple[str, str]]:
 html(ui.brand())
 with st.container(key="hero"):
     html(ui.hero_header(
-        "Deck Analyzer", "Pitch Deck", "Investor Screening",
+        "TEN Capital Analyzer", "Pitch Deck", "Investor Screening",
         "Upload a pitch deck and get TEN Capital's investor screening review and one-page summary, "
         "analyzed and scored by Claude against TEN criteria.",
     ))
@@ -219,7 +224,8 @@ if run and extraction is not None:
         with st.status("Running screening...", expanded=True) as status:
             try:
                 report, usage = analyse(
-                    extraction, settings, user_context=user_context or None,
+                    extraction, dataclasses.replace(settings, stage_estimate_enabled=estimate_stage),
+                    user_context=user_context or None,
                     external_research=external, progress=status.write,
                 )
                 state["report"], state["usage"] = report, usage
@@ -259,7 +265,7 @@ if report is not None:
             html(ui.chips([("Confidential — Internal Screening", "bad")] + [(r, "") for r in report.sensitivity.reasons]))
         html(ui.tiles([
             ("Track", report.gate.track_label.split(" - ")[0], report.gate.track_label.split(" - ")[-1], None),
-            ("Stage gate", report.gate.status.value, "", ui.RATING_TONE.get(report.gate.status.value)),
+            ("Stage gate", report.gate.label, "", ui.RATING_TONE.get(report.gate.status.value)),
             ("Effective fit", sc.effective_rating, f"Underlying: {sc.underlying_band}" if sc.underlying_band else "Band withheld",
              ui.RATING_TONE.get(sc.effective_rating, "ink_300")),
             ("Investability", f"{sc.total:.1f} / 100" if sc.complete else "Provisional",

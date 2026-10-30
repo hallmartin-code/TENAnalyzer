@@ -83,7 +83,7 @@ def render_full_report(report: ScreeningReport) -> bytes:
     sc = r.scoring
     rows = [["Item", "Result"],
             ["Track", r.gate.track_label + f" - {r.ledger.track.rationale}"],
-            ["Stage gate", f"{r.gate.status.value}: " + " ".join(r.gate.reasons)],
+            ["Stage gate", f"{r.gate.label}: " + " ".join(r.gate.reasons)],
             ["Effective TEN fit rating", sc.effective_rating],
             ["Underlying score", sc.status_label + (f" ({sc.underlying_band})" if sc.underlying_band else " - band withheld until all categories are assessable")],
             ["Eligibility override", sc.override_applied or "None"],

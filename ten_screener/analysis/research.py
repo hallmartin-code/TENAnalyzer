@@ -31,7 +31,13 @@ def run_research(client: ClaudeClient, ledger: LedgerOutput, retrieved_on: str) 
         company.name or "the company", company.website, company.sub_sector or company.sector,
         company.stated_stage, ledger.track.track,
     )
-    tools = [{"type": client.settings.web_search_tool_type, "name": "web_search", "max_uses": 6}]
+    return cited_search(client, prompt, retrieved_on, id_prefix="X", label="External research")
+
+
+def cited_search(client: ClaudeClient, prompt: str, retrieved_on: str, *, id_prefix: str, label: str,
+                 max_uses: int = 6) -> tuple[list[ExternalFinding], list[str]]:
+    """Run a web-search conversation and keep only claims backed by a search-result citation."""
+    tools = [{"type": client.settings.web_search_tool_type, "name": "web_search", "max_uses": max_uses}]
     messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
     notes: list[str] = []
     try:
@@ -42,7 +48,7 @@ def run_research(client: ClaudeClient, ledger: LedgerOutput, retrieved_on: str) 
             messages = messages + [{"role": "assistant", "content": message.content}]
             message = client.create(SYSTEM, messages, max_tokens=16000, tools=tools)
     except AnalysisError as exc:
-        notes.append(f"External research failed and was skipped: {exc.user_message}")
+        notes.append(f"{label} failed and was skipped: {exc.user_message}")
         return [], notes
 
     findings: list[ExternalFinding] = []
@@ -61,7 +67,7 @@ def run_research(client: ClaudeClient, ledger: LedgerOutput, retrieved_on: str) 
             seen.add(key)
             findings.append(
                 ExternalFinding(
-                    id=f"X{len(findings) + 1}",
+                    id=f"{id_prefix}{len(findings) + 1}",
                     claim=claim[:600],
                     url=url,
                     source_title=(getattr(citation, "title", "") or "")[:200],
@@ -70,5 +76,5 @@ def run_research(client: ClaudeClient, ledger: LedgerOutput, retrieved_on: str) 
                 )
             )
     if not findings:
-        notes.append("External research returned no cited findings.")
+        notes.append(f"{label} returned no cited findings.")
     return findings, notes

@@ -162,7 +162,7 @@ def finalise(
     elif pending:
         effective = "Pending stage verification"
         override = (
-            f"Stage gate {gate.status.value.lower()}: no final Strong or Moderate Fit recommendation "
+            f"Stage gate {gate.label.lower()}: no final Strong or Moderate Fit recommendation "
             "can be issued until the gate is verified."
         )
     elif complete:

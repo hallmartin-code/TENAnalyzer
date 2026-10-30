@@ -242,7 +242,7 @@ def _body(report: ScreeningReport, s: dict) -> list:
     # 1 ---------------------------------------------------------------------
     letter = f"Track {track}" if track != "undetermined" else "Track Undetermined"
     _section_head(story, 1, "Track Classification & Stage Gate",
-                  f"{letter} – {report.gate.status.value}. {led.track.rationale.rstrip('.')}. {TRACK_REQUIREMENT[track]}", s)
+                  f"{letter} – {report.gate.label}. {led.track.rationale.rstrip('.')}. {TRACK_REQUIREMENT[track]}", s)
     if a.stage_gate_evidence:
         rows = [["Evidence type", f"What the {review.source_short_name(report)} states", "Counts toward stage gate?"]]
         for row in a.stage_gate_evidence:
@@ -364,7 +364,7 @@ def _body(report: ScreeningReport, s: dict) -> list:
     if sc.override_applied and sc.underlying_band and sc.underlying_band != sc.effective_rating:
         score_text += f" (underlying {sc.underlying_band})"
     rows = [["Item", "Result"],
-            ["Track and stage gate", f"{letter} – {report.gate.status.value}"],
+            ["Track and stage gate", f"{letter} – {report.gate.label}"],
             ["Funding raised to date", review.funding_line(report)],
             ["Investability Score", score_text],
             ["Investor Readiness Score", f"{report.readiness.score} / 10" + (f" – {a.readiness_justification}" if a.readiness_justification else "")]]

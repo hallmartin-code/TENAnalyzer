@@ -47,7 +47,7 @@ The app opens at <http://localhost:8501>. No login, email or external storage is
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | An API key from the Claude Console: <https://console.anthropic.com> → **Settings → API Keys → Create Key**. The account needs API credits; usage is billed per analysis (two model calls, plus a third when external research is on). |
+| `ANTHROPIC_API_KEY` | An API key from the Claude Console: <https://console.anthropic.com> → **Settings → API Keys → Create Key**. The account needs API credits; usage is billed per analysis (two model calls, plus two when the stage estimate runs and one when external research is on). |
 | `ANTHROPIC_MODEL` | *Optional.* The app uses the current Claude model, **Claude Opus 5.5** (`claude-opus-5-5`), by default. Set this only to override it with another model that accepts image input. |
 
 The API key is never hard-coded. Without it the app still runs extraction and preview, but the analysis button is
@@ -100,7 +100,8 @@ To review the design without an upload or an API key, run
 Processing failures (bad file, API error, rendering error) are shown as **"Processing problem - not an investment
 finding"**, so they are never confused with screening results.
 
-Sidebar options: visual inspection (on by default), external research (**off by default**), public version, and an
+Sidebar options: visual inspection (on by default), external research (**off by default**), stage and FDA pathway
+estimate (on by default), public version, and an
 optional header logo.
 
 ---
@@ -153,8 +154,13 @@ Unknown values are `null` and render as "Not disclosed". They are never zero. PD
   pathway and jurisdiction that fit the product. Preclinical data and pre-submission meetings strengthen the assessment
   but are **not** required.
 * A gate **fails** only on affirmative evidence: the deck says it is pre-revenue, only pilots are evidenced, zero
-  customers are disclosed, or the deck says the pathway is undetermined. Silence gives **Cannot Determine**. Incomplete
-  evidence gives **Partially Meets**. When the track itself is unclear, the result is **Track Undetermined**.
+  customers are disclosed, or the deck says the pathway is undetermined. Incomplete evidence gives **Partially Meets**.
+* When the deck alone cannot settle the gate (silence, an unverifiable FDA clearance claim, or an unclear track), the
+  app searches FDA databases (510(k), De Novo, PMA, registration and listing) and public sources using only the
+  company's name, website and product description. Claude then commits to a stage and pathway estimate, shown as
+  e.g. **Partially Meets (estimated)** with its confidence, sources and the document that would verify it. The estimate
+  counts fully toward the rating, like a gate decided from the deck. Set `TEN_STAGE_ESTIMATE=off` (or use the
+  sidebar toggle) to report **Cannot Determine** instead.
 * Facts count only if their citations survived verification.
 
 ### Scoring

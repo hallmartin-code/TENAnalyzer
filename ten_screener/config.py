@@ -63,6 +63,7 @@ class Settings:
     max_visual_pages: int
     visual_width_px: int
     external_research_enabled: bool
+    stage_estimate_enabled: bool
     web_search_tool_type: str
     ocr_language: str
     resend_api_key: str | None = None
@@ -108,6 +109,7 @@ def load_settings() -> Settings:
         max_visual_pages=_env_int("TEN_MAX_VISUAL_PAGES", 40, minimum=0),
         visual_width_px=_env_int("TEN_VISUAL_WIDTH_PX", 1280, minimum=400),
         external_research_enabled=_env_bool("TEN_ENABLE_EXTERNAL_RESEARCH", False),
+        stage_estimate_enabled=_env_bool("TEN_STAGE_ESTIMATE", True),
         web_search_tool_type=_env("TEN_WEB_SEARCH_TOOL", "web_search_20260209") or "web_search_20260209",
         ocr_language=_env("TEN_OCR_LANGUAGE", "eng") or "eng",
         resend_api_key=_env("RESEND_API_KEY"),

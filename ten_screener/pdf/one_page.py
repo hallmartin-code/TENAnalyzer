@@ -126,7 +126,7 @@ def _story(report: ScreeningReport, level: Level, s: dict[str, ParagraphStyle], 
         score_sub = f"{sc.supported_points:.1f} pts · {sc.assessed_weight}% assessed · range {sc.possible_min:.0f}–{sc.possible_max:.0f}"
     cells = [
         ("TRACK", report.gate.track_label.split(" - ")[0], report.gate.track_label.split(" - ")[1] if " - " in report.gate.track_label else None),
-        ("STAGE GATE", report.gate.status.value, None),
+        ("STAGE GATE", report.gate.label, None),
         ("EFFECTIVE FIT", sc.effective_rating, underlying),
         ("INVESTABILITY SCORE", score_main, score_sub),
         ("INVESTOR READINESS", f"{report.readiness.score} / 10", "Preparation, not investability"),

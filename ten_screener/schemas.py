@@ -523,12 +523,34 @@ class GateStatus(str, Enum):
     CANNOT_DETERMINE = "Cannot Determine"
 
 
+class StageEstimate(_Model):
+    """Analyst-style estimate of stage and regulatory pathway, used when the deck alone cannot settle the gate."""
+
+    track: Literal["A", "B"]
+    estimated_stage: str  # e.g. "Seed - FDA-cleared device, pre-commercial launch"
+    gate_status: Literal["Meets Stage Gate", "Partially Meets", "Does Not Meet"]
+    confidence: Literal["low", "medium", "high"] = "low"
+    regulatory_pathway: str | None = None  # Track B: e.g. "510(k)", "De Novo", "PMA", "510(k)-exempt Class I"
+    jurisdiction: str | None = None
+    authorization_status: str | None = None  # e.g. "Cleared (K123456, 2024)" / "Not found in FDA databases"
+    clearance_reference: str | None = None  # 510(k)/De Novo/PMA number or product code when found
+    rationale: str  # 2-3 sentences: why this stage and pathway, what is inferred vs sourced
+    verification_needed: str | None = None  # the one document that would confirm the estimate
+    evidence_ids: list[str] = Field(default_factory=list)  # deck evidence ids (E*) and external finding ids (S*)
+
+
 class GateResult(_Model):
     track: Literal["A", "B", "undetermined"]
     track_label: str
     status: GateStatus
     reasons: list[str]
     evidence_ids: list[str] = Field(default_factory=list)
+    estimated: bool = False
+    estimate: StageEstimate | None = None
+
+    @property
+    def label(self) -> str:
+        return f"{self.status.value} (estimated)" if self.estimated else self.status.value
 
 
 class CapitalSummary(_Model):

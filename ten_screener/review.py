@@ -76,7 +76,7 @@ def track_line(report: ScreeningReport) -> str:
 
 
 def gate_line(report: ScreeningReport) -> tuple[str, str]:
-    return report.gate.status.value, " ".join(report.gate.reasons)
+    return report.gate.label, " ".join(report.gate.reasons)
 
 
 def funding_line(report: ScreeningReport) -> str:
