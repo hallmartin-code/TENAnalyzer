@@ -49,7 +49,6 @@ The app opens at <http://localhost:8501>. No login, email or external storage is
 |---|---|
 | `ANTHROPIC_API_KEY` | An API key from the Claude Console: <https://console.anthropic.com> → **Settings → API Keys → Create Key**. The account needs API credits; usage is billed per analysis (two model calls, plus a third when external research is on). |
 | `ANTHROPIC_MODEL` | The Claude model id to use, e.g. `claude-opus-5-5`. It must accept image input when visual inspection is on. |
-| `APP_PASSWORD` | Shared sign-in password. **Required on Railway**: a hosted deployment stays locked until it is set. Optional locally. |
 
 Neither is hard-coded anywhere. Without them the app still runs extraction and preview, but the analysis button is
 disabled and the sidebar names the missing variable. Every optional setting is documented in [.env.example](.env.example).
@@ -276,15 +275,16 @@ OCR all work in production), `railway.json` (Dockerfile build, health check on `
 |---|---|
 | `ANTHROPIC_API_KEY` | your Console key |
 | `ANTHROPIC_MODEL` | e.g. `claude-opus-5-5` |
-| `APP_PASSWORD` | a long random password to share with your team |
 | `TEN_REFUSAL_FALLBACK` | `on` (or `off` if your model rejects it) |
 | `RESEND_API_KEY` | your Resend key (enables result emails) |
 | `TEN_EMAIL_FROM` | a sender on your verified domain, e.g. `TEN Capital Screening <screening@tencapital.group>` |
 
 Every other setting in `.env.example` is optional. Railway sets `PORT` automatically.
 
-**3. Get a URL.** In the service's **Settings → Networking**, choose **Generate Domain**. Open it, sign in with
-`APP_PASSWORD`, and run one deck end to end.
+**Access is open.** The app has no sign-in, so anyone with the URL can run screenings. Each run
+spends Anthropic credits and sends a result email. Share the URL only with your team.
+
+**3. Get a URL.** In the service's **Settings → Networking**, choose **Generate Domain**. Open it and run one deck end to end.
 
 Operational notes:
 
@@ -309,7 +309,6 @@ ten_screener/
   schemas.py                   Pydantic models for extraction, evidence, LLM output and the report
   summary.py                   display lines shared by the PDFs and the UI
   review.py                    content rules for the Screening Review (cover rows, capital table, sources)
-  auth.py                      shared-password gate (mandatory when hosted)
   notify.py                    Resend result and failure emails (idempotent, never fatal)
   pdf/                         theme, screening_review (TEN format), one_page, full_report (evidence appendix), public
 templates/                     investor_screening_review_template.md - the document structure the review follows

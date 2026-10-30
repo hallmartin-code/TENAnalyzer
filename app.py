@@ -12,7 +12,7 @@ import logging
 import pandas as pd
 import streamlit as st
 
-from ten_screener import REPORT_TITLE, auth, notify, ui
+from ten_screener import REPORT_TITLE, notify, ui
 from ten_screener.analysis.analyzer import analyse
 from ten_screener.config import load_settings
 from ten_screener.errors import ScreenerError
@@ -28,7 +28,7 @@ from ten_screener.summary import capital_lines, snapshot_title, track_snapshot
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 st.set_page_config(page_title=REPORT_TITLE, page_icon=ui.favicon(), layout="wide")
-settings = load_settings()  # also loads .env, so APP_PASSWORD may live there locally
+settings = load_settings()  # also loads a local .env
 state = st.session_state
 
 
@@ -41,39 +41,6 @@ md = ui.md  # escape model, deck and user text before st.markdown / st.write
 
 
 html(ui.CSS)
-
-
-def require_password() -> None:
-    """Shared-password gate. Mandatory on hosted deployments so the API key cannot be used by strangers."""
-    expected = auth.configured_password()
-    if expected is None:
-        if auth.is_hosted():
-            html(ui.brand())
-            with st.container(key="hero"):
-                html(ui.hero_header("Secure access", "TEN Screener", "Locked",
-                                    "This deployment has no APP_PASSWORD set, so it is locked."))
-                st.error("Add an APP_PASSWORD variable in the Railway service settings and redeploy.")
-            st.stop()
-        return
-    if state.get("authenticated"):
-        return
-    html(ui.brand())
-    with st.container(key="hero"):
-        html(ui.hero_header("Secure access", "TEN Screener", "Sign in",
-                            "Enter the team password to screen pitch decks against TEN Capital criteria."))
-        with st.form("login", border=False):
-            given = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Sign in", type="primary", width="stretch")
-        if submitted:
-            if auth.password_matches(given, expected):
-                state["authenticated"] = True
-                st.rerun()
-            st.error("Incorrect password.")
-    html(ui.footer())
-    st.stop()
-
-
-require_password()
 
 
 def processing_error(exc: ScreenerError) -> None:

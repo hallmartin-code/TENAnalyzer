@@ -1,16 +1,15 @@
-"""Multi-page Screening Review (TEN format), its content rules, and the hosted-deployment password gate."""
+"""Multi-page Screening Review (TEN format), its content rules, and UI helpers."""
 
 from __future__ import annotations
 
 import copy
 import io
 import json
-from pathlib import Path
 
 import pytest
 from pypdf import PdfReader
 
-from ten_screener import auth, review
+from ten_screener import review
 from ten_screener.analysis.analyzer import analyse
 from ten_screener.analysis.llm import ClaudeClient
 from ten_screener.pdf.screening_review import render_screening_review
@@ -126,47 +125,6 @@ def test_single_page_source_cites_sections_not_pages(settings):
     assert "sections" in review.citation_convention(report)
     assert review.page_refs(report, [1]) == ""
     assert "short company document" in review.source_note(report)
-
-
-# --- password gate -------------------------------------------------------------
-def test_hosted_detection_and_password_check():
-    assert auth.is_hosted({"RAILWAY_ENVIRONMENT_NAME": "production"})
-    assert not auth.is_hosted({})
-    assert auth.configured_password({"APP_PASSWORD": "  "}) is None
-    assert auth.password_matches("s3cret", "s3cret") and not auth.password_matches("guess", "s3cret")
-
-
-def _app(monkeypatch, **env):
-    from streamlit.testing.v1 import AppTest
-
-    monkeypatch.setattr("ten_screener.config.load_dotenv", lambda *a, **k: None)  # ignore any local .env
-    for key in ("APP_PASSWORD", "RAILWAY_ENVIRONMENT_NAME", "RAILWAY_PROJECT_ID", "RAILWAY_SERVICE_ID", "TEN_REQUIRE_PASSWORD"):
-        monkeypatch.delenv(key, raising=False)
-    for key, value in env.items():
-        monkeypatch.setenv(key, value)
-    return AppTest.from_file(str(Path(__file__).resolve().parent.parent / "app.py"), default_timeout=60)
-
-
-def _main_app_visible(at) -> bool:
-    return any("Deck Analyzer" in m.value for m in at.markdown)
-
-
-def test_hosted_app_without_password_is_locked(monkeypatch):
-    at = _app(monkeypatch, RAILWAY_ENVIRONMENT_NAME="production").run()
-    assert not at.exception
-    assert any("APP_PASSWORD" in e.value for e in at.error)
-    assert not _main_app_visible(at)
-
-
-def test_app_requires_correct_password(monkeypatch):
-    at = _app(monkeypatch, RAILWAY_ENVIRONMENT_NAME="production", APP_PASSWORD="correct horse").run()
-    assert not _main_app_visible(at)
-    at.text_input[0].input("wrong").run()
-    at.button[0].click().run()
-    assert any("Incorrect password" in e.value for e in at.error)
-    at.text_input[0].input("correct horse").run()
-    at.button[0].click().run()
-    assert _main_app_visible(at)
 
 
 def test_markdown_escaping_prevents_latex_and_formatting():

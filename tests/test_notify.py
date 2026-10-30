@@ -171,8 +171,6 @@ def test_app_emails_once_after_analysis(monkeypatch, report):
     for key, value in {"ANTHROPIC_API_KEY": "k", "ANTHROPIC_MODEL": "m", "RESEND_API_KEY": "re_x",
                        "TEN_EMAIL_FROM": "screening@tencapital.group"}.items():
         monkeypatch.setenv(key, value)
-    for key in ("APP_PASSWORD", "RAILWAY_ENVIRONMENT_NAME", "RAILWAY_PROJECT_ID", "RAILWAY_SERVICE_ID"):
-        monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr("ten_screener.analysis.analyzer.analyse", lambda *a, **k: (report, {}))
     sent: list[dict] = []
 
