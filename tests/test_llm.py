@@ -23,28 +23,50 @@ def api_error(cls, status: int, headers: dict | None = None):
     return cls(f"error {status}", response=response, body={"error": {"message": f"status {status}"}})
 
 
-def test_missing_configuration_is_actionable(settings):
-    with pytest.raises(ConfigurationError, match="ANTHROPIC_MODEL"):
-        ClaudeClient(dataclasses.replace(settings, model=None))
+def test_only_api_key_is_required(settings):
+    assert dataclasses.replace(settings, model=None).missing_api_config() == []
+    with pytest.raises(ConfigurationError, match="ANTHROPIC_API_KEY"):
+        ClaudeClient(dataclasses.replace(settings, api_key=None))
 
 
-def test_request_uses_env_model_effort_and_adaptive_thinking(settings):
+def test_defaults_to_current_model_with_refusal_fallback(monkeypatch):
+    from ten_screener.config import DEFAULT_MODEL, load_settings
+
+    for name in ("ANTHROPIC_MODEL", "TEN_REFUSAL_FALLBACK", "TEN_EFFORT", "TEN_THINKING"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setattr("ten_screener.config.load_dotenv", lambda *a, **k: None)
+    s = load_settings()
+    assert s.model == DEFAULT_MODEL == "claude-opus-5-5" and s.refusal_fallback
     fake = FakeAnthropic([track_a_ledger_json()])
-    ClaudeClient(settings, client=fake).generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
+    client = ClaudeClient(s, client=fake)
+    client.generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
     call = fake.calls[0]
-    assert call["model"] == "test-model-from-env"
-    assert call["thinking"] == {"type": "adaptive"}
-    assert call["output_config"] == {"effort": "high"}
-    assert "fallbacks" not in call
+    assert call["model"] == "claude-opus-5-5" and client.model == "claude-opus-5-5"
+    assert call["thinking"] == {"type": "adaptive"} and call["output_config"] == {"effort": "high"}
+    assert call["fallbacks"] == "default" and call["betas"] == ["server-side-fallback-2026-07-01"]
 
 
-def test_optional_params_omitted_and_fallback_enabled(settings):
-    s = dataclasses.replace(settings, effort=None, thinking="omit", refusal_fallback=True)
+def test_model_override_from_env_and_fallback_can_be_disabled(monkeypatch):
+    from ten_screener.config import load_settings
+
+    monkeypatch.setattr("ten_screener.config.load_dotenv", lambda *a, **k: None)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "some-other-model")
+    monkeypatch.setenv("TEN_REFUSAL_FALLBACK", "off")
+    s = load_settings()
+    fake = FakeAnthropic([track_a_ledger_json()])
+    ClaudeClient(s, client=fake).generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
+    call = fake.calls[0]
+    assert call["model"] == "some-other-model" and "fallbacks" not in call and "betas" not in call
+
+
+def test_optional_params_omitted(settings):
+    s = dataclasses.replace(settings, effort=None, thinking="omit", refusal_fallback=False)
     fake = FakeAnthropic([track_a_ledger_json()])
     ClaudeClient(s, client=fake).generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
     call = fake.calls[0]
     assert "thinking" not in call and "output_config" not in call
-    assert call["fallbacks"] == "default" and call["betas"] == ["server-side-fallback-2026-07-01"]
 
 
 def test_fenced_json_accepted():

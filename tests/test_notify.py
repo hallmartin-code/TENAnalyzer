@@ -168,7 +168,7 @@ def test_app_emails_once_after_analysis(monkeypatch, report):
     from streamlit.testing.v1 import AppTest
 
     monkeypatch.setattr("ten_screener.config.load_dotenv", lambda *a, **k: None)
-    for key, value in {"ANTHROPIC_API_KEY": "k", "ANTHROPIC_MODEL": "m", "RESEND_API_KEY": "re_x",
+    for key, value in {"ANTHROPIC_API_KEY": "k", "RESEND_API_KEY": "re_x",
                        "TEN_EMAIL_FROM": "screening@tencapital.group"}.items():
         monkeypatch.setenv(key, value)
     monkeypatch.setattr("ten_screener.analysis.analyzer.analyse", lambda *a, **k: (report, {}))

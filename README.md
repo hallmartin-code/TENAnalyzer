@@ -27,7 +27,7 @@ cd "C:\Users\user\Documents\Claude Cowork folder\TENAnalyzer"
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-Copy-Item .env.example .env        # then edit .env: set ANTHROPIC_API_KEY and ANTHROPIC_MODEL
+Copy-Item .env.example .env        # then edit .env: set ANTHROPIC_API_KEY
 python -m streamlit run app.py
 ```
 
@@ -37,7 +37,7 @@ python -m streamlit run app.py
 cd TENAnalyzer
 python3 -m venv .venv && source .venv/bin/activate
 python -m pip install -r requirements.txt
-cp .env.example .env               # then edit .env: set ANTHROPIC_API_KEY and ANTHROPIC_MODEL
+cp .env.example .env               # then edit .env: set ANTHROPIC_API_KEY
 python -m streamlit run app.py
 ```
 
@@ -48,15 +48,17 @@ The app opens at <http://localhost:8501>. No login, email or external storage is
 | Variable | Purpose |
 |---|---|
 | `ANTHROPIC_API_KEY` | An API key from the Claude Console: <https://console.anthropic.com> → **Settings → API Keys → Create Key**. The account needs API credits; usage is billed per analysis (two model calls, plus a third when external research is on). |
-| `ANTHROPIC_MODEL` | The Claude model id to use, e.g. `claude-opus-5-5`. It must accept image input when visual inspection is on. |
+| `ANTHROPIC_MODEL` | *Optional.* The app uses the current Claude model, **Claude Opus 5.5** (`claude-opus-5-5`), by default. Set this only to override it with another model that accepts image input. |
 
-Neither is hard-coded anywhere. Without them the app still runs extraction and preview, but the analysis button is
-disabled and the sidebar names the missing variable. Every optional setting is documented in [.env.example](.env.example).
-Two settings depend on the model you choose:
+The API key is never hard-coded. Without it the app still runs extraction and preview, but the analysis button is
+disabled and the sidebar names the missing variable. Every optional setting is documented in
+[.env.example](.env.example). With the default model, the defaults below need no changes. Revisit them only if you
+override `ANTHROPIC_MODEL`:
 
-* `TEN_REFUSAL_FALLBACK=on` sends the server-side refusal fallback (`fallbacks: "default"`). Current Opus and Fable models
-  on the Claude API support it. If your model rejects the request with a 400 error, set it to `off`.
-* `TEN_EFFORT` / `TEN_THINKING` default to `high` / `adaptive`. Use `omit` for models that do not accept these parameters.
+* `TEN_REFUSAL_FALLBACK` is on by default. If Claude declines a request, the API retries it on a fallback model
+  (`fallbacks: "default"`). If an overridden model rejects the request with a 400 error, set it to `off`.
+* `TEN_EFFORT` / `TEN_THINKING` default to `high` / `adaptive`. Use `omit` for models that do not accept these
+  parameters.
 
 ### Optional local tools
 
@@ -274,8 +276,6 @@ OCR all work in production), `railway.json` (Dockerfile build, health check on `
 | Variable | Value |
 |---|---|
 | `ANTHROPIC_API_KEY` | your Console key |
-| `ANTHROPIC_MODEL` | e.g. `claude-opus-5-5` |
-| `TEN_REFUSAL_FALLBACK` | `on` (or `off` if your model rejects it) |
 | `RESEND_API_KEY` | your Resend key (enables result emails) |
 | `TEN_EMAIL_FROM` | a sender on your verified domain, e.g. `TEN Capital Screening <screening@tencapital.group>` |
 

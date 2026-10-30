@@ -18,7 +18,7 @@ import anthropic
 from pydantic import BaseModel, ValidationError
 
 from ten_screener.analysis.prompts import REPAIR_SYSTEM_PROMPT, schema_text
-from ten_screener.config import Settings
+from ten_screener.config import DEFAULT_MODEL, Settings
 from ten_screener.errors import AnalysisError, ConfigurationError
 
 LOGGER = logging.getLogger(__name__)
@@ -84,10 +84,10 @@ class ClaudeClient:
         missing = settings.missing_api_config()
         if missing and client is None:
             raise ConfigurationError(
-                "Analysis needs " + " and ".join(missing) + ". Copy .env.example to .env, fill in the values, and restart the app."
+                "Analysis needs " + " and ".join(missing) + ". Add it to .env (or the Railway variables) and restart the app."
             )
         self.settings = settings
-        self.model = settings.model or ""
+        self.model = settings.model or DEFAULT_MODEL
         self.usage = Usage()
         self._client = client or anthropic.Anthropic(
             api_key=settings.api_key,
@@ -127,7 +127,7 @@ class ClaudeClient:
             raise ConfigurationError("The API key does not have permission for this request or model (403).") from exc
         except anthropic.NotFoundError as exc:
             raise ConfigurationError(
-                f"Model '{self.model}' was not found (404). Check ANTHROPIC_MODEL is a valid model id for your account."
+                f"Model '{self.model}' was not found (404). If you set ANTHROPIC_MODEL, check it is a valid model id for your account, or remove it to use the default."
             ) from exc
         except anthropic.RateLimitError as exc:
             retry_after = exc.response.headers.get("retry-after") if exc.response is not None else None

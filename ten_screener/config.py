@@ -1,7 +1,8 @@
 """Runtime settings, read from environment variables (optionally via a local .env file).
 
-Credentials and the model identifier are never hard-coded: both must be supplied
-through the environment. See ``.env.example`` for every variable.
+Credentials are never hard-coded and must be supplied through the environment.
+The Claude model defaults to the current version (DEFAULT_MODEL) and can be
+overridden with ANTHROPIC_MODEL. See ``.env.example`` for every variable.
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ FONT_DIR = ASSETS_DIR / "fonts"
 DEFAULT_FOOTER_LOGO = ASSETS_DIR / "TEN_Capital_logo_footer.png"
 
 _EFFORT_LEVELS = {"low", "medium", "high", "xhigh", "max"}
+#: Current Claude model (Claude Opus 5.5). Override with ANTHROPIC_MODEL only if needed.
+DEFAULT_MODEL = "claude-opus-5-5"
 _EMAIL_ATTACHMENT_KEYS = ("review", "onepage", "evidence", "json")
 DEFAULT_EMAIL_TO = "Info@tencapital.group"
 
@@ -78,8 +81,6 @@ class Settings:
         missing = []
         if not self.api_key:
             missing.append("ANTHROPIC_API_KEY")
-        if not self.model:
-            missing.append("ANTHROPIC_MODEL")
         return missing
 
 
@@ -95,10 +96,10 @@ def load_settings() -> Settings:
         thinking = "adaptive"
     return Settings(
         api_key=_env("ANTHROPIC_API_KEY"),
-        model=_env("ANTHROPIC_MODEL"),
+        model=_env("ANTHROPIC_MODEL", DEFAULT_MODEL),
         effort=effort.lower() if effort else None,
         thinking=thinking,
-        refusal_fallback=_env_bool("TEN_REFUSAL_FALLBACK", False),
+        refusal_fallback=_env_bool("TEN_REFUSAL_FALLBACK", True),
         max_output_tokens=_env_int("TEN_MAX_OUTPUT_TOKENS", 48000, minimum=4000),
         max_retries=_env_int("TEN_API_MAX_RETRIES", 3, minimum=0),
         request_timeout_s=float(_env_int("TEN_API_TIMEOUT_SECONDS", 900, minimum=30)),

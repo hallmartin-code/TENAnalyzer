@@ -20,4 +20,5 @@ def settings(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr("ten_screener.config.load_dotenv", lambda *a, **k: None)
     base = load_settings()
-    return dataclasses.replace(base, api_key="test-key", model="test-model-from-env", max_visual_pages=4)
+    # Fallback off keeps request-shape tests on the standard endpoint; the default (on) has its own test in test_llm.py.
+    return dataclasses.replace(base, api_key="test-key", model="test-model-from-env", max_visual_pages=4, refusal_fallback=False)

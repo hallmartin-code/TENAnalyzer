@@ -165,7 +165,7 @@ with st.container(key="hero"):
     run = st.button("Run investor screening", type="primary", width="stretch",
                     disabled=bool(missing) or extraction is None)
     if missing:
-        st.caption("Screening is disabled until the Anthropic API key and model are configured.")
+        st.caption("Screening is disabled until the Anthropic API key is configured.")
     html(ui.disclosure(settings.email_to if settings.email_enabled else None))
 
 report: ScreeningReport | None = state.get("report")
