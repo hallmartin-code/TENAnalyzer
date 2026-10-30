@@ -95,10 +95,39 @@ def test_malformed_twice_raises_actionable_error(settings):
     assert info.value.retryable
 
 
-def test_truncated_response_explains_limit(settings):
-    fake = FakeAnthropic([fake_message('{"evidence": [', stop_reason="max_tokens")])
-    with pytest.raises(AnalysisError, match="TEN_MAX_OUTPUT_TOKENS"):
-        ClaudeClient(settings, client=fake).generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
+def test_default_output_limit_is_model_ceiling(monkeypatch):
+    from ten_screener.analysis.llm import MAX_OUTPUT_CEILING
+    from ten_screener.config import load_settings
+
+    monkeypatch.delenv("TEN_MAX_OUTPUT_TOKENS", raising=False)
+    monkeypatch.setattr("ten_screener.config.load_dotenv", lambda *a, **k: None)
+    assert load_settings().max_output_tokens == MAX_OUTPUT_CEILING == 128_000
+
+
+def test_truncated_response_retried_with_more_room(settings):
+    s = dataclasses.replace(settings, max_output_tokens=48_000)
+    fake = FakeAnthropic([fake_message('{"evidence": [', stop_reason="max_tokens"), track_a_ledger_json()])
+    client = ClaudeClient(s, client=fake)
+    ledger = client.generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
+    assert ledger.track.track == "A"
+    assert [c["max_tokens"] for c in fake.calls] == [48_000, 128_000]
+    assert "retried at 128000" in client.usage.notes[0]
+
+
+def test_truncated_at_ceiling_retried_at_lower_effort(settings):
+    s = dataclasses.replace(settings, max_output_tokens=128_000, effort="high")
+    fake = FakeAnthropic([fake_message('{"evidence": [', stop_reason="max_tokens"), track_a_ledger_json()])
+    ClaudeClient(s, client=fake).generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
+    assert [c["output_config"]["effort"] for c in fake.calls] == ["high", "medium"]
+
+
+def test_truncated_twice_explains_limit(settings):
+    s = dataclasses.replace(settings, max_output_tokens=48_000)
+    cut = '{"evidence": ['
+    fake = FakeAnthropic([fake_message(cut, stop_reason="max_tokens"), fake_message(cut, stop_reason="max_tokens")])
+    with pytest.raises(AnalysisError, match="TEN_MAX_VISUAL_PAGES") as info:
+        ClaudeClient(s, client=fake).generate_json("sys", MESSAGES, LedgerOutput, label="ledger")
+    assert info.value.retryable
 
 
 def test_refusal_reported(settings):

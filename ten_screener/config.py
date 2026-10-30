@@ -101,7 +101,7 @@ def load_settings() -> Settings:
         effort=effort.lower() if effort else None,
         thinking=thinking,
         refusal_fallback=_env_bool("TEN_REFUSAL_FALLBACK", True),
-        max_output_tokens=_env_int("TEN_MAX_OUTPUT_TOKENS", 48000, minimum=4000),
+        max_output_tokens=_env_int("TEN_MAX_OUTPUT_TOKENS", 128000, minimum=4000),
         max_retries=_env_int("TEN_API_MAX_RETRIES", 3, minimum=0),
         request_timeout_s=float(_env_int("TEN_API_TIMEOUT_SECONDS", 900, minimum=30)),
         max_upload_mb=_env_int("TEN_MAX_UPLOAD_MB", 50),

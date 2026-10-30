@@ -26,6 +26,10 @@ LOGGER = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+#: Output ceiling of current Claude models. Thinking tokens count toward max_tokens, so a truncated
+#: response is retried once at this ceiling (and, if already there, at a lower effort) before failing.
+MAX_OUTPUT_CEILING = 128_000
+_EFFORT_STEP_DOWN = {"max": "high", "xhigh": "high", "high": "medium"}
 _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
 
 
@@ -96,7 +100,8 @@ class ClaudeClient:
         )
 
     # ------------------------------------------------------------------ raw
-    def _kwargs(self, system: str, messages: list[dict[str, Any]], max_tokens: int, tools: list[dict] | None) -> dict[str, Any]:
+    def _kwargs(self, system: str, messages: list[dict[str, Any]], max_tokens: int, tools: list[dict] | None,
+                effort: str | None = None) -> dict[str, Any]:
         kwargs: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -105,15 +110,16 @@ class ClaudeClient:
         }
         if self.settings.thinking == "adaptive":
             kwargs["thinking"] = {"type": "adaptive"}
-        if self.settings.effort:
-            kwargs["output_config"] = {"effort": self.settings.effort}
+        effort = effort or self.settings.effort
+        if effort:
+            kwargs["output_config"] = {"effort": effort}
         if tools:
             kwargs["tools"] = tools
         return kwargs
 
     def create(self, system: str, messages: list[dict[str, Any]], *, max_tokens: int | None = None,
-               tools: list[dict] | None = None) -> Any:
-        kwargs = self._kwargs(system, messages, max_tokens or self.settings.max_output_tokens, tools)
+               tools: list[dict] | None = None, effort: str | None = None) -> Any:
+        kwargs = self._kwargs(system, messages, max_tokens or self.settings.max_output_tokens, tools, effort)
         try:
             if self.settings.refusal_fallback:
                 stream = self._client.beta.messages.stream(**kwargs, betas=[FALLBACK_BETA], fallbacks="default")
@@ -162,17 +168,34 @@ class ClaudeClient:
     # ----------------------------------------------------------------- json
     def generate_json(self, system: str, messages: list[dict[str, Any]], model: type[T], *, label: str) -> T:
         message = self.create(system, messages)
-        text = "".join(getattr(b, "text", "") for b in message.content if getattr(b, "type", "") == "text")
         if message.stop_reason == "max_tokens":
-            self.usage.notes.append(f"{label}: response hit max_tokens")
-            raise AnalysisError(
-                f"The {label} response was cut off at the output limit. Increase TEN_MAX_OUTPUT_TOKENS and retry."
-            )
+            message = self._retry_truncated(system, messages, label)
+        text = "".join(getattr(b, "text", "") for b in message.content if getattr(b, "type", "") == "text")
         try:
             return parse_model(text, model)
         except (ValueError, ValidationError) as exc:
             LOGGER.warning("%s: response failed validation; attempting one repair", label)
             return self._repair(text, model, exc, label)
+
+    def _retry_truncated(self, system: str, messages: list[dict[str, Any]], label: str) -> Any:
+        """Retry a response cut off at max_tokens with more room, or less thinking when already at the ceiling."""
+        limit = self.settings.max_output_tokens
+        if limit < MAX_OUTPUT_CEILING:
+            self.usage.notes.append(f"{label}: hit max_tokens at {limit}; retried at {MAX_OUTPUT_CEILING}")
+            message = self.create(system, messages, max_tokens=MAX_OUTPUT_CEILING)
+        elif self.settings.effort in _EFFORT_STEP_DOWN:
+            lower = _EFFORT_STEP_DOWN[self.settings.effort]
+            self.usage.notes.append(f"{label}: hit max_tokens at {limit}; retried at effort {lower}")
+            message = self.create(system, messages, effort=lower)
+        else:
+            message = None
+        if message is None or message.stop_reason == "max_tokens":
+            raise AnalysisError(
+                f"The {label} response was cut off at the output limit even after an automatic retry with more room. "
+                "The deck is likely too dense for one pass: reduce TEN_MAX_VISUAL_PAGES or set TEN_EFFORT=medium, then retry.",
+                retryable=True,
+            )
+        return message
 
     def _repair(self, text: str, model: type[T], error: Exception, label: str) -> T:
         self.usage.repairs += 1
